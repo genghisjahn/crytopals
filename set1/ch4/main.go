@@ -8,27 +8,48 @@ import (
 	"strings"
 )
 
+type result struct {
+	RawText   string
+	Key       string
+	Score     int
+	Decrypted string
+}
+
 const tkeys = "abcdefghjklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func main() {
+	possibles := []result{}
+	var hscore int
 	for _, v := range strings.Split(cipherlines, "\n") {
-		processPhrase(v)
+		r := processPhrase(v)
+		if r.Score > hscore {
+			hscore = r.Score
+			possibles = []result{}
+			possibles = append(possibles, r)
+			continue
+		}
+		if r.Score == hscore {
+			possibles = append(possibles, r)
+		}
+	}
+	for _, p := range possibles {
+		fmt.Printf("Score: %v\nDecrypt: %sKey: %s\nOriginal: %s\n-----\n", p.Score, p.Decrypted, p.Key, p.RawText)
 	}
 }
 
-func processPhrase(phrase string) {
+func processPhrase(phrase string) result {
+	r := result{}
 	msg := phrase
 	var key byte
 	var highest = 0
-	var highkey string
-	var highmsg string
+
 	for _, v := range tkeys {
 		key = byte(v)
 
 		hexData, err := hex.DecodeString(msg)
 		if err != nil {
 			fmt.Println(err)
-			return
+			return r
 		}
 
 		result := []byte{}
@@ -37,23 +58,26 @@ func processPhrase(phrase string) {
 			r := hexData[k] ^ key
 			result = append(result, r)
 		}
-		score := ScorePhrase(strings.ToUpper(string(result)))
+		score := scorePhrase(strings.ToUpper(string(result)))
 		if score > highest {
 			highest = score
-			highkey = string(key)
-			highmsg = string(result)
+			r.Key = string(key)
+			r.RawText = phrase
+			r.Score = score
+			r.Decrypted = string(result)
 		}
 	}
-	fmt.Println("Best Candidate:", highkey, highest, highmsg)
+
+	return r
 }
 
-func ScorePhrase(words string) int {
+func scorePhrase(words string) int {
 	result := 0
 	freq := make(map[string]int)
 	check1 := []string{"E", "T", "A"}
 	check2 := []string{"O", "I", "N"}
-	check3 := []string{"S", "H", "R"}
-	check4 := []string{"D", "L", "U", " "}
+	check3 := []string{"S", "H", "R", " "}
+	check4 := []string{"D", "L", "U"}
 	_, _, _ = check2, check3, check4
 	length := float64(len(words))
 	for _, v := range words {
@@ -83,7 +107,7 @@ func ScorePhrase(words string) int {
 	}
 	for _, c := range check4 {
 		if float64(freq[c])/length > .017 {
-			result += 1
+			result++
 		}
 	}
 
