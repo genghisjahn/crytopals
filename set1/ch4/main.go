@@ -12,7 +12,7 @@ const tkeys = "abcdefghjklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func main() {
 	for _, v := range strings.Split(cipherlines, "\n") {
-		fmt.Println(v)
+		processPhrase(v)
 	}
 }
 
