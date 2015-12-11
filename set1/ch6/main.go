@@ -25,10 +25,6 @@ func main() {
 	if strHamDist(a, b) != 37 {
 		panic("strHamDist func is broken!")
 	}
-
-	//TODO
-	//ciphertext needs to be decoded from base64
-
 	sDec, decErr := base64.StdEncoding.DecodeString(ciphertext)
 	if decErr != nil {
 		fmt.Println(decErr)
@@ -56,6 +52,11 @@ func main() {
 	for _, v := range possibles {
 		blocks := blocksplit([]byte(ciphertext), v)
 		tblocks := transpose(blocks, v)
+		for _, v := range tblocks {
+			fmt.Println("-----")
+			fmt.Println(processPhrase(string(v)))
+			return
+		}
 		_ = tblocks
 
 	}
@@ -63,7 +64,7 @@ func main() {
 }
 
 func transpose(blocks [][]byte, size int) [][]byte {
-	fmt.Println(blocks)
+	//	fmt.Println(blocks)
 	tblocks := [][]byte{}
 	for i := 0; i < size; i++ {
 		t := []byte{}
