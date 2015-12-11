@@ -1,7 +1,117 @@
 package main
 
+//http://cryptopals.com/sets/1/challenges/3/
+
+import (
+	"encoding/hex"
+	"fmt"
+	"strings"
+)
+
+type result struct {
+	RawText   string
+	Key       string
+	Score     int
+	Decrypted string
+}
+
+const tkeys = "abcdefghjklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 func main() {
-	//You forgot to do this one!
+	possibles := []result{}
+	var hscore int
+	for _, v := range strings.Split(cipherlines, "\n") {
+		r := processPhrase(v)
+		if r.Score > hscore {
+			hscore = r.Score
+			possibles = []result{}
+			possibles = append(possibles, r)
+			continue
+		}
+		if r.Score == hscore {
+			possibles = append(possibles, r)
+		}
+	}
+	for _, p := range possibles {
+		fmt.Printf("Score: %v\nDecrypt: %sKey: %s\nOriginal: %s\n-----\n", p.Score, p.Decrypted, p.Key, p.RawText)
+	}
+}
+
+func processPhrase(phrase string) result {
+	r := result{}
+	msg := phrase
+	var key byte
+	var highest = 0
+
+	for _, v := range tkeys {
+		key = byte(v)
+
+		hexData, err := hex.DecodeString(msg)
+		if err != nil {
+			fmt.Println(err)
+			return r
+		}
+
+		result := []byte{}
+
+		for k := range hexData {
+			r := hexData[k] ^ key
+			result = append(result, r)
+		}
+		score := scorePhrase(strings.ToUpper(string(result)))
+		if score > highest {
+			highest = score
+			r.Key = string(key)
+			r.RawText = phrase
+			r.Score = score
+			r.Decrypted = string(result)
+		}
+	}
+
+	return r
+}
+
+func scorePhrase(words string) int {
+	result := 0
+	freq := make(map[string]int)
+	check1 := []string{"E", "T", "A"}
+	check2 := []string{"O", "I", "N"}
+	check3 := []string{"S", "H", "R", " "}
+	check4 := []string{"D", "L", "U"}
+	_, _, _ = check2, check3, check4
+	length := float64(len(words))
+	for _, v := range words {
+		k := string(v)
+		if c, ok := freq[k]; ok {
+			freq[k] = c + 1
+		} else {
+			freq[k] = 1
+		}
+	}
+
+	for _, c := range check1 {
+		if float64(freq[c])/length > .017 {
+			result += 4
+		}
+
+	}
+	for _, c := range check2 {
+		if float64(freq[c])/length > .017 {
+			result += 3
+		}
+	}
+	for _, c := range check3 {
+		if float64(freq[c])/length > .017 {
+			result += 2
+		}
+	}
+	for _, c := range check4 {
+		if float64(freq[c])/length > .017 {
+			result++
+		}
+	}
+
+	return result
 }
 
 var cipherlines = `0e3647e8592d35514a081243582536ed3de6734059001e3f535ce6271032
