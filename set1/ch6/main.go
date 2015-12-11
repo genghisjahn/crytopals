@@ -3,6 +3,7 @@ package main
 //http://cryptopals.com/sets/1/challenges/6/
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -27,7 +28,17 @@ func main() {
 
 	//TODO
 	//ciphertext needs to be decoded from base64
-	btext := []byte(ciphertext)
+
+	sDec, decErr := base64.StdEncoding.DecodeString(ciphertext)
+	if decErr != nil {
+		fmt.Println(decErr)
+		return
+	}
+	// fmt.Println(ciphertext)
+	// fmt.Println("----")
+	// fmt.Println(string(sDec))
+	// The output of string(sDec is interesting)
+	btext := []byte(sDec)
 	possibles := []int{}
 	for i := 2; i < 41; i++ {
 
