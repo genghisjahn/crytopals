@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -122,16 +121,16 @@ func processPhrase(phrase string) result {
 	for _, v := range tkeys {
 		key = byte(v)
 
-		hexData, err := hex.DecodeString(msg)
-		if err != nil {
-			fmt.Println(err)
-			return r
-		}
+		// hexData, err := hex.DecodeString(msg)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	return r
+		// }
 
 		result := []byte{}
 
-		for k := range hexData {
-			r := hexData[k] ^ key
+		for k := range msg {
+			r := msg[k] ^ key
 			result = append(result, r)
 		}
 		score := scorePhrase(strings.ToUpper(string(result)))
