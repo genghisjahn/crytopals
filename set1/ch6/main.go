@@ -16,6 +16,13 @@ type result struct {
 	Decrypted string
 }
 
+type repKey struct {
+	Length int
+	Key    string
+}
+
+type results []result
+
 const tkeys = "abcdefghjklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func main() {
@@ -29,10 +36,7 @@ func main() {
 		fmt.Println(decErr)
 		return
 	}
-	// fmt.Println(ciphertext)
-	// fmt.Println("----")
-	// fmt.Println(string(sDec))
-	// The output of string(sDec is interesting)
+
 	btext := []byte(sDec)
 	possibles := []int{}
 	for i := 2; i < 41; i++ {
@@ -48,22 +52,30 @@ func main() {
 		}
 
 	}
-	for _, v := range possibles {
-		blocks := blocksplit([]byte(ciphertext), v)
-		tblocks := transpose(blocks, v)
+	repKeys := []repKey{}
+	for _, p := range possibles {
+		blocks := blocksplit([]byte(ciphertext), p)
+		tblocks := transpose(blocks, p)
+		rslice := results{}
 		for _, v := range tblocks {
-			fmt.Println("-----")
-			fmt.Println(processPhrase(string(v)))
-			return
+			r := processPhrase(string(v))
+			rslice = append(rslice, r)
 		}
-		_ = tblocks
+		//sort.Sort(rslice)
+		rk := repKey{}
+		rk.Length = len(rslice)
 
+		for i := len(rslice) - 1; i >= 0; i-- {
+			rk.Key += rslice[i].Key
+		}
+		repKeys = append(repKeys, rk)
 	}
-
+	for _, rk1 := range repKeys {
+		fmt.Println(rk1.Length, rk1.Key)
+	}
 }
 
 func transpose(blocks [][]byte, size int) [][]byte {
-	//	fmt.Println(blocks)
 	tblocks := [][]byte{}
 	for i := 0; i < size; i++ {
 		t := []byte{}
@@ -104,7 +116,7 @@ func strHamDist(s1, s2 string) int {
 
 		for k := range b1 {
 			if b1[k] != b2[k] {
-				t += 1
+				t++
 			}
 		}
 
@@ -121,12 +133,6 @@ func processPhrase(phrase string) result {
 	for _, v := range tkeys {
 		key = byte(v)
 
-		// hexData, err := hex.DecodeString(msg)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	return r
-		// }
-
 		result := []byte{}
 
 		for k := range msg {
@@ -134,13 +140,14 @@ func processPhrase(phrase string) result {
 			result = append(result, r)
 		}
 		score := scorePhrase(strings.ToUpper(string(result)))
-		if score > highest {
+		if score >= highest {
 			highest = score
 			r.Key = string(key)
 			r.RawText = phrase
 			r.Score = score
 			r.Decrypted = string(result)
 		}
+
 	}
 
 	return r
@@ -187,6 +194,18 @@ func scorePhrase(words string) int {
 	}
 
 	return result
+}
+
+func (slice results) Len() int {
+	return len(slice)
+}
+
+func (slice results) Less(i, j int) bool {
+	return slice[i].Score < slice[j].Score
+}
+
+func (slice results) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 var ciphertext = `HUIfTQsPAh9PE048GmllH0kcDk4TAQsHThsBFkU2AB4BSWQgVB0dQzNTTmVS
