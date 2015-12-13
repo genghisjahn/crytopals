@@ -11,12 +11,23 @@ import (
 
 func main() {
 
+	a := "this is a test"
+	b := "wokka wokka!!!"
+
+	if strHamDist(a, b) != 37 {
+		panic("strHamDist func is broken!")
+	}
+
 	encryptedText, _ := base64.StdEncoding.DecodeString(ciphertext)
-	lenscores := getKeyLengthScores(40, 2, 41, string(encryptedText))
-	for _, s := range lenscores[0:3] {
+
+	lenscores := getKeyLengthScores(4, 2, 41, string(encryptedText))
+	for _, s := range lenscores[0:5] {
 		blocks := blocksplit([]byte(encryptedText), s.Length)
 		tblocks := transpose(blocks, s.Length)
-		_ = tblocks
+		bscores := scoreblocks(tblocks)
+		for _, bs := range bscores {
+			fmt.Println(bs.Key, bs.Score)
+		}
 	}
 
 }
@@ -72,19 +83,10 @@ func getKeyLengthScores(topcount, minlen, maxlen int, txt string) []keylengthsco
 		btext := []byte(txt)
 		first := btext[0:i]
 		second := btext[i : 2*i]
-		third := btext[2*i : 3*i]
-		fourth := btext[3*i : 4*i]
-
 		s1 := string(first)
 		s2 := string(second)
-		s3 := string(third)
-		s4 := string(fourth)
 		hd1 := strHamDist(s1, s2)
-		hd2 := strHamDist(s3, s4)
 		normHD1 := float64(hd1) / float64(i)
-		normHD2 := float64(hd2) / float64(i)
-		avg := (normHD1 + normHD2) / 2.0
-		_ = avg
 		kls := keylengthscore{i, normHD1}
 		scores = append(scores, kls)
 	}
@@ -147,18 +149,22 @@ func scorePhrase(words string) int {
 	check3 := []string{"S", "H", "R", " "}
 	check4 := []string{"D", "L", "U"}
 	length := float64(len(words))
+	var weird bool
+	_ = weird
 	for _, v := range words {
 		k := string(v)
-		// if v < 32 || v > 127 {
-		// 	continue
-		// }
+		if v < 32 || v > 127 {
+			weird = true
+		}
 		if c, ok := freq[k]; ok {
 			freq[k] = c + 1
 		} else {
 			freq[k] = 1
 		}
 	}
-
+	if weird {
+		result += 10
+	}
 	for _, c := range check1 {
 		if float64(freq[c])/length > .017 {
 			result += 1
