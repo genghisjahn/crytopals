@@ -38,41 +38,66 @@ func main() {
 	}
 
 	btext := []byte(sDec)
-	possibles := []int{}
+	var lowkeysize = 0
+	var lowkeyscore = 100.0
 	for i := 2; i < 41; i++ {
-
 		first := btext[0:i]
 		second := btext[i : 2*i]
 		s1 := string(first)
 		s2 := string(second)
 		hd := strHamDist(s1, s2)
 		normHD := float64(hd) / float64(i)
-		if normHD < 2.8 {
-			possibles = append(possibles, i)
+		if normHD < lowkeyscore {
+			lowkeysize = i
+			lowkeyscore = normHD
 		}
 
 	}
-	repKeys := []repKey{}
-	for _, p := range possibles {
-		blocks := blocksplit([]byte(ciphertext), p)
-		tblocks := transpose(blocks, p)
-		rslice := results{}
-		for _, v := range tblocks {
-			r := processPhrase(string(v))
-			rslice = append(rslice, r)
-		}
-		//sort.Sort(rslice)
-		rk := repKey{}
-		rk.Length = len(rslice)
+	ks := lowkeysize
+	blocks := blocksplit([]byte(ciphertext), ks)
+	tblocks := transpose(blocks, ks)
+	rk := repKey{}
+	rk.Length = ks
+	for _, v := range tblocks {
+		r := processPhrase(string(v))
+		rk.Key += r.Key
+	}
+	key := buildkey(rk.Key, string(sDec))
 
-		for i := len(rslice) - 1; i >= 0; i-- {
-			rk.Key += rslice[i].Key
-		}
-		repKeys = append(repKeys, rk)
+	if len(string(sDec)) != len(key) {
+		panic("length is off")
 	}
-	for _, rk1 := range repKeys {
-		fmt.Println(rk1.Length, rk1.Key)
+	decStr := decrypt(key, string(sDec))
+
+	fmt.Println(decStr)
+}
+
+func decrypt(keystr string, msg string) string {
+	key := []byte(keystr)
+
+	result := []byte{}
+	hexData := []byte(msg)
+	for k := range hexData {
+		r := hexData[k] ^ key[k]
+		result = append(result, r)
 	}
+	return string(result)
+}
+
+func buildkey(rkey string, target string) string {
+	result := ""
+	rlen := len(rkey)
+	tlen := len(target)
+	num := tlen / rlen
+	for i := 0; i < num; i++ {
+		result += rkey
+
+	}
+	m := tlen % rlen
+	if m > 0 {
+		result += rkey[0:m]
+	}
+	return result
 }
 
 func transpose(blocks [][]byte, size int) [][]byte {
@@ -154,6 +179,7 @@ func processPhrase(phrase string) result {
 }
 
 func scorePhrase(words string) int {
+	fmt.Println(words)
 	result := 0
 	freq := make(map[string]int)
 	check1 := []string{"E", "T", "A"}
