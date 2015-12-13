@@ -39,14 +39,13 @@ func main() {
 
 func processPhrase(phrase string) result {
 	r := result{}
-	msg := phrase
 	var key byte
 	var highest = 0
 
 	for _, v := range tkeys {
 		key = byte(v)
 
-		hexData, err := hex.DecodeString(msg)
+		hexData, err := hex.DecodeString(phrase)
 		if err != nil {
 			fmt.Println(err)
 			return r
