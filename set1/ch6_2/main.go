@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strconv"
@@ -9,17 +10,15 @@ import (
 )
 
 func main() {
+
 	encryptedText, _ := base64.StdEncoding.DecodeString(ciphertext)
 	lenscores := getKeyLengthScores(40, 2, 41, string(encryptedText))
-
-	for _, s := range lenscores {
+	for _, s := range lenscores[0:3] {
 		blocks := blocksplit([]byte(encryptedText), s.Length)
 		tblocks := transpose(blocks, s.Length)
-		sb := scoreblocks(tblocks)
-		posKey := getPossibleKey(sb)
-
-		fmt.Printf("%s\n", posKey)
+		_ = tblocks
 	}
+
 }
 
 func getPossibleKey(sb skscores) string {
@@ -147,10 +146,12 @@ func scorePhrase(words string) int {
 	check2 := []string{"O", "I", "N"}
 	check3 := []string{"S", "H", "R", " "}
 	check4 := []string{"D", "L", "U"}
-	_, _, _ = check2, check3, check4
 	length := float64(len(words))
 	for _, v := range words {
 		k := string(v)
+		// if v < 32 || v > 127 {
+		// 	continue
+		// }
 		if c, ok := freq[k]; ok {
 			freq[k] = c + 1
 		} else {
@@ -160,13 +161,13 @@ func scorePhrase(words string) int {
 
 	for _, c := range check1 {
 		if float64(freq[c])/length > .017 {
-			result += 2
+			result += 1
 		}
 
 	}
 	for _, c := range check2 {
 		if float64(freq[c])/length > .017 {
-			result += 2
+			result += 1
 		}
 	}
 	for _, c := range check3 {
@@ -180,6 +181,46 @@ func scorePhrase(words string) int {
 		}
 	}
 
+	return result
+}
+
+func buildkey(rkey string, target string) string {
+	result := ""
+	rlen := len(rkey)
+	tlen := len(target)
+	num := tlen / rlen
+	for i := 0; i < num; i++ {
+		result += rkey
+
+	}
+	m := tlen % rlen
+	if m > 0 {
+		result += rkey[0:m]
+	}
+	return result
+}
+
+func xorstrings(s1, s2 string) []byte {
+	h1 := hex.EncodeToString([]byte(s1))
+	h2 := hex.EncodeToString([]byte(s2))
+	hexData1, err1 := hex.DecodeString(h1)
+	if err1 != nil {
+		fmt.Println("1", err1)
+		panic(err1)
+	}
+
+	hexData2, err2 := hex.DecodeString(h2)
+	if err2 != nil {
+		fmt.Println("2", err2)
+		panic(err2)
+	}
+	result := []byte{}
+	if len(hexData1) == len(hexData2) {
+		for k := range hexData1 {
+			r := hexData1[k] ^ hexData2[k]
+			result = append(result, r)
+		}
+	}
 	return result
 }
 
