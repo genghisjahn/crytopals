@@ -3,9 +3,27 @@ package main
 //http://cryptopals.com/sets/1/challenges/6/
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
 )
+
+type result struct {
+	RawText   string
+	Key       string
+	Score     int
+	Decrypted string
+}
+
+type repKey struct {
+	Length int
+	Key    string
+}
+
+type results []result
+
+const tkeys = "abcdefghjklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func main() {
 	a := "this is a test"
@@ -13,33 +31,76 @@ func main() {
 	if strHamDist(a, b) != 37 {
 		panic("strHamDist func is broken!")
 	}
+	sDec, decErr := base64.StdEncoding.DecodeString(ciphertext)
+	if decErr != nil {
+		fmt.Println(decErr)
+		return
+	}
 
-	btext := []byte(ciphertext)
-	possibles := []int{}
+	btext := []byte(sDec)
+	var lowkeysize = 0
+	var lowkeyscore = 100.0
 	for i := 2; i < 41; i++ {
-
 		first := btext[0:i]
 		second := btext[i : 2*i]
 		s1 := string(first)
 		s2 := string(second)
 		hd := strHamDist(s1, s2)
 		normHD := float64(hd) / float64(i)
-		if normHD < 2.8 {
-			possibles = append(possibles, i)
+		if normHD < lowkeyscore {
+			lowkeysize = i
+			lowkeyscore = normHD
 		}
 
 	}
-	for _, v := range possibles {
-		blocks := blocksplit([]byte(ciphertext), v)
-		tblocks := transpose(blocks, v)
-		_ = tblocks
+	ks := lowkeysize
+	blocks := blocksplit([]byte(ciphertext), ks)
+	tblocks := transpose(blocks, ks)
+	rk := repKey{}
+	rk.Length = ks
+	for _, v := range tblocks {
+		r := processPhrase(string(v))
+		rk.Key += r.Key
+	}
+	key := buildkey(rk.Key, string(sDec))
+
+	if len(string(sDec)) != len(key) {
+		panic("length is off")
+	}
+	decStr := decrypt(key, string(sDec))
+
+	fmt.Println(decStr)
+}
+
+func decrypt(keystr string, msg string) string {
+	key := []byte(keystr)
+
+	result := []byte{}
+	hexData := []byte(msg)
+	for k := range hexData {
+		r := hexData[k] ^ key[k]
+		result = append(result, r)
+	}
+	return string(result)
+}
+
+func buildkey(rkey string, target string) string {
+	result := ""
+	rlen := len(rkey)
+	tlen := len(target)
+	num := tlen / rlen
+	for i := 0; i < num; i++ {
+		result += rkey
 
 	}
-
+	m := tlen % rlen
+	if m > 0 {
+		result += rkey[0:m]
+	}
+	return result
 }
 
 func transpose(blocks [][]byte, size int) [][]byte {
-	fmt.Println(blocks)
 	tblocks := [][]byte{}
 	for i := 0; i < size; i++ {
 		t := []byte{}
@@ -80,12 +141,96 @@ func strHamDist(s1, s2 string) int {
 
 		for k := range b1 {
 			if b1[k] != b2[k] {
-				t += 1
+				t++
 			}
 		}
 
 	}
 	return t
+}
+
+func processPhrase(phrase string) result {
+	r := result{}
+	msg := phrase
+	var key byte
+	var highest = 0
+
+	for _, v := range tkeys {
+		key = byte(v)
+
+		result := []byte{}
+
+		for k := range msg {
+			r := msg[k] ^ key
+			result = append(result, r)
+		}
+		score := scorePhrase(strings.ToUpper(string(result)))
+		if score >= highest {
+			highest = score
+			r.Key = string(key)
+			r.RawText = phrase
+			r.Score = score
+			r.Decrypted = string(result)
+		}
+
+	}
+
+	return r
+}
+
+func scorePhrase(words string) int {
+	result := 0
+	freq := make(map[string]int)
+	check1 := []string{"E", "T", "A"}
+	check2 := []string{"O", "I", "N"}
+	check3 := []string{"S", "H", "R", " "}
+	check4 := []string{"D", "L", "U"}
+	_, _, _ = check2, check3, check4
+	length := float64(len(words))
+	for _, v := range words {
+		k := string(v)
+		if c, ok := freq[k]; ok {
+			freq[k] = c + 1
+		} else {
+			freq[k] = 1
+		}
+	}
+
+	for _, c := range check1 {
+		if float64(freq[c])/length > .017 {
+			result += 4
+		}
+
+	}
+	for _, c := range check2 {
+		if float64(freq[c])/length > .017 {
+			result += 3
+		}
+	}
+	for _, c := range check3 {
+		if float64(freq[c])/length > .017 {
+			result += 2
+		}
+	}
+	for _, c := range check4 {
+		if float64(freq[c])/length > .017 {
+			result++
+		}
+	}
+
+	return result
+}
+
+func (slice results) Len() int {
+	return len(slice)
+}
+
+func (slice results) Less(i, j int) bool {
+	return slice[i].Score < slice[j].Score
+}
+
+func (slice results) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 var ciphertext = `HUIfTQsPAh9PE048GmllH0kcDk4TAQsHThsBFkU2AB4BSWQgVB0dQzNTTmVS
