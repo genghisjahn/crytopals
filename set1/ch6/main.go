@@ -179,7 +179,6 @@ func processPhrase(phrase string) result {
 }
 
 func scorePhrase(words string) int {
-	fmt.Println(words)
 	result := 0
 	freq := make(map[string]int)
 	check1 := []string{"E", "T", "A"}
