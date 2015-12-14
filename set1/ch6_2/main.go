@@ -20,14 +20,17 @@ func main() {
 
 	encryptedText, _ := base64.StdEncoding.DecodeString(ciphertext)
 
-	lenscores := getKeyLengthScores(4, 2, 41, string(encryptedText))
-	for _, s := range lenscores[0:5] {
+	lenscores := getKeyLengthScores(10, 2, 41, encryptedText)
+	for _, s := range lenscores {
 		blocks := blocksplit([]byte(encryptedText), s.Length)
 		tblocks := transpose(blocks, s.Length)
 		bscores := scoreblocks(tblocks)
+		key := ""
 		for _, bs := range bscores {
-			fmt.Println(bs.Key, bs.Score)
+			key += bs.Key
 		}
+		fmt.Println("Length:", s.Length, "Key:", key)
+		key = ""
 	}
 
 }
@@ -77,16 +80,18 @@ func blocksplit(source []byte, size int) [][]byte {
 	return r
 }
 
-func getKeyLengthScores(topcount, minlen, maxlen int, txt string) []keylengthscore {
+func getKeyLengthScores(topcount, minlen, maxlen int, data []byte) []keylengthscore {
 	scores := klscores{}
 	for i := minlen; i < maxlen; i++ {
-		btext := []byte(txt)
+		btext := data
 		first := btext[0:i]
 		second := btext[i : 2*i]
 		s1 := string(first)
 		s2 := string(second)
+
 		hd1 := strHamDist(s1, s2)
 		normHD1 := float64(hd1) / float64(i)
+
 		kls := keylengthscore{i, normHD1}
 		scores = append(scores, kls)
 	}
@@ -99,7 +104,6 @@ func strHamDist(s1, s2 string) int {
 	for k, v := range s1 {
 		n1 := int64(v)
 		n2 := int64(s2[k])
-
 		b1 := strconv.FormatInt(n1, 2)
 		b2 := strconv.FormatInt(n2, 2)
 		b1 = fmt.Sprintf("%07d", b1)
@@ -111,6 +115,33 @@ func strHamDist(s1, s2 string) int {
 		}
 
 	}
+	return t
+}
+
+func byteHamDist(s1, s2 []byte) int {
+	t := 0
+
+	num1, err1 := strconv.Atoi(string(s1))
+	if err1 != nil {
+		panic(err1)
+	}
+	num2, err2 := strconv.Atoi(string(s2))
+	if err2 != nil {
+		panic(err2)
+	}
+	n1 := int64(num1)
+	n2 := int64(num2)
+
+	b1 := strconv.FormatInt(n1, 2)
+	b2 := strconv.FormatInt(n2, 2)
+	b1 = fmt.Sprintf("%07d", b1)
+	b2 = fmt.Sprintf("%07d", b2)
+	for k := range b1 {
+		if b1[k] != b2[k] {
+			t++
+		}
+	}
+
 	return t
 }
 
@@ -149,36 +180,30 @@ func scorePhrase(words string) int {
 	check3 := []string{"S", "H", "R", " "}
 	check4 := []string{"D", "L", "U"}
 	length := float64(len(words))
-	var weird bool
-	_ = weird
 	for _, v := range words {
 		k := string(v)
-		if v < 32 || v > 127 {
-			weird = true
-		}
+
 		if c, ok := freq[k]; ok {
 			freq[k] = c + 1
 		} else {
 			freq[k] = 1
 		}
 	}
-	if weird {
-		result += 10
-	}
+
 	for _, c := range check1 {
 		if float64(freq[c])/length > .017 {
-			result += 1
+			result += 4
 		}
 
 	}
 	for _, c := range check2 {
 		if float64(freq[c])/length > .017 {
-			result += 1
+			result += 3
 		}
 	}
 	for _, c := range check3 {
 		if float64(freq[c])/length > .017 {
-			result += 1
+			result += 2
 		}
 	}
 	for _, c := range check4 {
