@@ -18,9 +18,11 @@ func main() {
 		panic("strHamDist func is broken!")
 	}
 
-	encryptedText, _ := base64.StdEncoding.DecodeString(ciphertext)
-
-	lenscores := getKeyLengthScores(10, 2, 41, encryptedText)
+	encryptedText, errDec := base64.StdEncoding.DecodeString(ciphertext)
+	if errDec != nil {
+		panic(errDec)
+	}
+	lenscores := getKeyLengthScores(1, 29, 30, string(encryptedText))
 	for _, s := range lenscores {
 		blocks := blocksplit([]byte(encryptedText), s.Length)
 		tblocks := transpose(blocks, s.Length)
@@ -29,7 +31,7 @@ func main() {
 		for _, bs := range bscores {
 			key += bs.Key
 		}
-		fmt.Println("Length:", s.Length, "Key:", key)
+		//fmt.Println("Length:", s.Length, "Key:", key)
 		key = ""
 	}
 
@@ -80,20 +82,28 @@ func blocksplit(source []byte, size int) [][]byte {
 	return r
 }
 
-func getKeyLengthScores(topcount, minlen, maxlen int, data []byte) []keylengthscore {
+func getKeyLengthScores(topcount, minlen, maxlen int, data string) []keylengthscore {
 	scores := klscores{}
+
 	for i := minlen; i < maxlen; i++ {
-		btext := data
+		btext := []byte(data)
 		first := btext[0:i]
 		second := btext[i : 2*i]
 		s1 := string(first)
 		s2 := string(second)
-
+		if len(first) != len(s1) {
+			fmt.Println(first, s1, "!!")
+		}
+		if len(second) != len(s2) {
+			fmt.Println(first, s2, "!!")
+		}
 		hd1 := strHamDist(s1, s2)
+		hd2 := byteHamDist(first, second)
 		normHD1 := float64(hd1) / float64(i)
-
+		normHD2 := float64(hd2) / float64(i)
 		kls := keylengthscore{i, normHD1}
 		scores = append(scores, kls)
+		fmt.Println(i, normHD2)
 	}
 	sort.Sort(scores)
 	return scores[0:topcount]
@@ -101,6 +111,7 @@ func getKeyLengthScores(topcount, minlen, maxlen int, data []byte) []keylengthsc
 
 func strHamDist(s1, s2 string) int {
 	t := 0
+	fmt.Println(len(s1), len(s2))
 	for k, v := range s1 {
 		n1 := int64(v)
 		n2 := int64(s2[k])
@@ -120,28 +131,21 @@ func strHamDist(s1, s2 string) int {
 
 func byteHamDist(s1, s2 []byte) int {
 	t := 0
-
-	num1, err1 := strconv.Atoi(string(s1))
-	if err1 != nil {
-		panic(err1)
-	}
-	num2, err2 := strconv.Atoi(string(s2))
-	if err2 != nil {
-		panic(err2)
-	}
-	n1 := int64(num1)
-	n2 := int64(num2)
-
-	b1 := strconv.FormatInt(n1, 2)
-	b2 := strconv.FormatInt(n2, 2)
-	b1 = fmt.Sprintf("%07d", b1)
-	b2 = fmt.Sprintf("%07d", b2)
-	for k := range b1 {
-		if b1[k] != b2[k] {
-			t++
+	for k, v := range s1 {
+		n1 := int64(v)
+		n2 := int64(s2[k])
+		b1 := strconv.FormatInt(n1, 2)
+		b2 := strconv.FormatInt(n2, 2)
+		b1 = fmt.Sprintf("%07d", b1)
+		b2 = fmt.Sprintf("%07d", b2)
+		for k := range b1 {
+			if b1[k] != b2[k] {
+				t++
+			}
 		}
-	}
 
+	}
+	fmt.Println(len(s1), t)
 	return t
 }
 
